@@ -1,0 +1,5 @@
+# Build context is ~/Projects. Send only each project's environment.yml and the
+# entrypoint, otherwise Docker would upload every dataset on every build.
+*
+!*/environment.yml
+!claude-box/entrypoint.sh

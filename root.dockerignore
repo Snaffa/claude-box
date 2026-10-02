@@ -1,0 +1,7 @@
+# Build context for claude-box is ~/Projects. VS Code builds from a generated
+# Dockerfile, so claude-box/Dockerfile.dockerignore does not apply there; this
+# copy does. Send only each project's environment.yml and the entrypoint,
+# otherwise Docker would upload every dataset (40+ GB) on every build.
+*
+!*/environment.yml
+!claude-box/entrypoint.sh

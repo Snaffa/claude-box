@@ -1,0 +1,29 @@
+// VS Code dev container for all of ~/Projects, built from claude-box.
+// Open ~/Projects in VS Code and run "Dev Containers: Reopen in Container".
+{
+    "name": "claude-box",
+    "dockerComposeFile": [
+        "../claude-box/compose.yaml",
+        "compose.devcontainer.yaml"
+    ],
+    "service": "claude",
+    "workspaceFolder": "/home/angelo/Projects",
+    "remoteUser": "angelo",
+    "updateRemoteUserUID": false,
+    // Keep the container running after VS Code closes, so Claude sessions survive
+    "shutdownAction": "none",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "anthropic.claude-code",
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter"
+            ],
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "python.condaPath": "/opt/conda/bin/conda"
+            }
+        }
+    }
+}

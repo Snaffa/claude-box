@@ -1,0 +1,30 @@
+services:
+  claude:
+    build:
+      context: ..
+      dockerfile: claude-box/Dockerfile
+      args:
+        USERNAME: ${USER}
+        USER_UID: ${HOST_UID:-1000}
+        USER_GID: ${HOST_GID:-1000}
+    image: claude-box
+    stdin_open: true
+    tty: true
+    volumes:
+      # All projects, read-write, at the same paths as on the host
+      - ${HOME}/Projects:${HOME}/Projects
+      # Claude's own config and login, kept separate from the host's ~/.claude
+      - claude-config:${HOME}/.claude
+      # Memory and session history for every project, shared with the host Claude
+      # (folders are keyed by project path, which is identical inside and out)
+      - ${HOME}/.claude/projects:${HOME}/.claude/projects
+      # Git identity for commits (read-only; no SSH keys are mounted, so no pushing)
+      - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
+      # Lab network share (sshfs), read-only, same path as on the host
+      - /mnt/csmhome2:/mnt/csmhome2:ro
+
+volumes:
+  claude-config:
+    # Fixed name so the login is shared by claude-box.sh and the VS Code dev
+    # container (which use different compose project names)
+    name: claude-box_claude-config

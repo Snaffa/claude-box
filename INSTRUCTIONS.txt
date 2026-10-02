@@ -1,0 +1,93 @@
+claude-box: run Claude Code in a container, for any project under ~/Projects
+============================================================================
+
+What the container can see
+--------------------------
+  ~/Projects             read-write (all projects, same paths as on the host)
+  ~/.claude/projects     read-write (Claude memory + session history, shared with host)
+  ~/.gitconfig           read-only  (commit identity; no SSH keys, so no pushing)
+  /mnt/csmhome2          read-only  (lab network share)
+Claude's login and settings live in a separate Docker volume ("claude-config"),
+not in your real ~/.claude.
+
+
+1. One-time setup: install Docker
+---------------------------------
+  sudo apt install -y docker.io docker-compose-v2 docker-buildx
+  sudo usermod -aG docker $USER
+
+Then log out and back in (or run: newgrp docker).
+Note: being in the docker group is equivalent to root on this machine.
+
+Optional shortcut (add to ~/.bashrc):
+  alias cbox=~/Projects/claude-box/claude-box.sh
+
+
+2. Build the image
+------------------
+Run from anywhere:
+  ~/Projects/claude-box/claude-box.sh build
+
+The first build is slow (conda environments with pytorch, gmsh, vtk).
+Rebuild whenever:
+  - a project's environment.yml changes
+  - you add a new project that has an environment.yml
+  - you want a newer Claude Code version
+
+
+3. Launch
+---------
+Go into the project you want to work on, then start it. The folder you
+launch from decides which project Claude opens in and which conda
+environment is activated, so this step must run inside ~/Projects/<project>:
+  cd ~/Projects/<project>
+  ~/Projects/claude-box/claude-box.sh
+
+Any extra arguments are passed to claude, e.g.:
+  ~/Projects/claude-box/claude-box.sh --dangerously-skip-permissions
+
+The first time, type /login inside Claude. The login is saved in the volume,
+so you only do it once.
+
+The conda environment is picked automatically from the project folder name
+(e.g. ~/Projects/MC-AI -> env "MC-AI"). Projects without an environment.yml
+use the base environment.
+
+
+4. Work in VS Code (dev container)
+----------------------------------
+VS Code only looks for .devcontainer/devcontainer.json at the root of the
+folder you open. Since the workspace here is ~/Projects (so every project is
+visible at once), that file has to live at ~/Projects/.devcontainer, not
+inside this repo -- but it's versioned here (devcontainer.json,
+compose.devcontainer.yaml, root.dockerignore) and symlinked into place. One
+time per machine, after cloning this repo into ~/Projects/claude-box:
+  cd ~/Projects
+  mkdir -p .devcontainer
+  ln -s ../claude-box/devcontainer.json .devcontainer/devcontainer.json
+  ln -s ../claude-box/compose.devcontainer.yaml .devcontainer/compose.devcontainer.yaml
+  ln -s claude-box/root.dockerignore .dockerignore
+(root.dockerignore matters: without it, VS Code's build uploads everything
+under ~/Projects -- including datasets -- as the Docker build context.)
+
+Then:
+  code ~/Projects        then: Ctrl+Shift+P > "Dev Containers: Reopen in Container"
+VS Code then runs inside the container: files, terminals, Python/Jupyter and
+the Claude Code extension all live there. Open a terminal, cd into a project
+(its conda env activates automatically on cd) and run `claude`; it links to
+the editor (diffs, selection, open files). The Claude panel works too.
+The container keeps running after VS Code closes; claude-box.sh joins it
+when it is running. Stop it with: docker stop claude-box
+After editing the Dockerfile: "Dev Containers: Rebuild Container".
+
+
+Troubleshooting
+---------------
+- /mnt/csmhome2 is empty inside the container:
+    the sshfs share wasn't mounted when the container started. Mount it on
+    the host, then restart the container.
+- Build fails while creating an environment:
+    one project's environment.yml doesn't solve; the log line
+    "=== creating env for <project> ===" shows which one.
+- Start over with a fresh login/settings:
+    docker volume rm claude-box_claude-config

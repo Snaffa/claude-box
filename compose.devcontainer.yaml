@@ -1,0 +1,8 @@
+# Dev-container additions to claude-box/compose.yaml: one long-lived, named
+# container that VS Code attaches to, instead of a throwaway `compose run`.
+services:
+  claude:
+    container_name: claude-box
+    init: true
+    working_dir: ${HOME}/Projects
+    command: ["sleep", "infinity"]

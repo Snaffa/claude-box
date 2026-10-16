@@ -10,6 +10,10 @@ services:
     image: claude-box
     stdin_open: true
     tty: true
+    # Docker defaults to ndots:0, which makes short names like "ebncsm2" time
+    # out (~7 s) before the bu.edu search domain is tried.
+    dns_opt:
+      - ndots:1
     volumes:
       # All projects, read-write, at the same paths as on the host
       - ${HOME}/Projects:${HOME}/Projects
@@ -18,10 +22,25 @@ services:
       # Memory and session history for every project, shared with the host Claude
       # (folders are keyed by project path, which is identical inside and out)
       - ${HOME}/.claude/projects:${HOME}/.claude/projects
-      # Git identity for commits (read-only; no SSH keys are mounted, so no pushing)
+      # Git identity for commits (read-only; the only ssh key mounted is not
+      # authorized on GitHub, so no pushing)
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
       # Lab network share (sshfs), read-only, same path as on the host
       - /mnt/csmhome2:/mnt/csmhome2:ro
+      # ~/server: sshfs mounted at login by niri (see ~/.config/niri/cfg/autostart.kdl).
+      # Read-only, except your own directory below. No rslave propagation on
+      # purpose: a mount propagated in later would arrive read-write, so the
+      # share must be mounted before the container starts (restart it otherwise).
+      - type: bind
+        source: ${HOME}/server
+        target: ${HOME}/server
+        read_only: true
+      - type: bind
+        source: ${HOME}/server/csmhome2/amudano
+        target: ${HOME}/server/csmhome2/amudano
+      # ssh to the lab servers with a dedicated key that only works through the
+      # claude-ssh-gate forced command (see INSTRUCTIONS.txt)
+      - ${HOME}/.config/claude-box/ssh:${HOME}/.ssh:ro
 
 volumes:
   claude-config:

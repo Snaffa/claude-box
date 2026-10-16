@@ -70,5 +70,12 @@ PROMPT_COMMAND="_claude_box_env${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 _claude_box_env
 EOF
 
+# ssh client and rsync for launching runs on the lab servers. Added last so it
+# doesn't invalidate the conda layers above.
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends openssh-client rsync \
+    && rm -rf /var/lib/apt/lists/*
+USER ${USERNAME}
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["claude"]

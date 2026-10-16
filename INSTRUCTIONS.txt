@@ -5,8 +5,15 @@ What the container can see
 --------------------------
   ~/Projects             read-write (all projects, same paths as on the host)
   ~/.claude/projects     read-write (Claude memory + session history, shared with host)
-  ~/.gitconfig           read-only  (commit identity; no SSH keys, so no pushing)
+  ~/.gitconfig           read-only  (commit identity; the container ssh key is not
+                                     authorized on GitHub, so no pushing)
   /mnt/csmhome2          read-only  (lab network share)
+  ~/server               read-only  (sshfs share, mounted at login by niri autostart;
+                                     needs user_allow_other in /etc/fuse.conf).
+                                     Must be mounted before the container starts.
+  ~/server/csmhome2/amudano  read-write (your own lab directory)
+  ~/.ssh                 read-only  (from ~/.config/claude-box/ssh: a dedicated key
+                                     for the ebncsm* servers, see "ssh to the lab")
 Claude's login and settings live in a separate Docker volume ("claude-config"),
 not in your real ~/.claude.
 
@@ -91,3 +98,20 @@ Troubleshooting
     "=== creating env for <project> ===" shows which one.
 - Start over with a fresh login/settings:
     docker volume rm claude-box_claude-config
+
+
+ssh to the lab
+--------------
+The containers ssh to the ebncsm* servers with their own key,
+~/.config/claude-box/ssh/id_ed25519 (not your personal key; it is not
+authorized on GitHub or anywhere else). On the servers, ~/.ssh/authorized_keys
+pins that key to a forced command:
+  restrict,command="/home/amudano/bin/claude-ssh-gate" ssh-ed25519 ... claude-box@...
+so every command from a container goes through ~/bin/claude-ssh-gate first. It
+refuses interactive shells, rm -r/-f, find -delete, rsync --delete, destructive
+git, file transfers (scp/sftp/rsync; copy through the ~/server mount instead),
+anything touching ~/.ssh or the gate, and the shared directories
+(/mnt/csmhome2/common, /mnt/csmhome/{amontalb,liudavid,malasio,software}).
+Every decision is logged in ~/.claude-ssh-gate.log on the server.
+It is a pattern check, not a sandbox: it stops the usual ways of erasing data.
+To revoke container ssh: delete that line from ~/.ssh/authorized_keys.

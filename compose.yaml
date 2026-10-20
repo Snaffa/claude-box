@@ -25,6 +25,8 @@ services:
       # Git identity for commits (read-only; the only ssh key mounted is not
       # authorized on GitHub, so no pushing)
       - ${HOME}/.gitconfig:${HOME}/.gitconfig:ro
+      # Reference papers, read-only, same path as on the host
+      - ${HOME}/Documents/References:${HOME}/Documents/References:ro
       # Lab network share (sshfs), read-only, same path as on the host
       - /mnt/csmhome2:/mnt/csmhome2:ro
       # ~/server: sshfs mounted at login by niri (see ~/.config/niri/cfg/autostart.kdl).

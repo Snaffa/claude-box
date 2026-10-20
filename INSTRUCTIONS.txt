@@ -7,6 +7,7 @@ What the container can see
   ~/.claude/projects     read-write (Claude memory + session history, shared with host)
   ~/.gitconfig           read-only  (commit identity; the container ssh key is not
                                      authorized on GitHub, so no pushing)
+  ~/Documents/References read-only  (reference papers)
   /mnt/csmhome2          read-only  (lab network share)
   ~/server               read-only  (sshfs share, mounted at login by niri autostart;
                                      needs user_allow_other in /etc/fuse.conf).

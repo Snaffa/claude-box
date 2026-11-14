@@ -1,5 +1,5 @@
 # Shared sandbox for running Claude Code on any project under ~/Projects.
-# Projects, Claude's memory, and the network share are mounted in at run time
+# Projects, Claude's memory, and the reference papers are mounted in at run time
 # (see compose.yaml); only the conda environments are baked in.
 FROM ubuntu:24.04
 
@@ -70,12 +70,13 @@ PROMPT_COMMAND="_claude_box_env${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 _claude_box_env
 EOF
 
-# ssh client and rsync for launching runs on the lab servers. Added last so it
-# doesn't invalidate the conda layers above.
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends openssh-client rsync \
-    && rm -rf /var/lib/apt/lists/*
-USER ${USERNAME}
+# Herdr: terminal workspace manager showing each Claude's state (working,
+# blocked, idle). Runs inside the container; the host attaches with docker exec.
+RUN curl -fsSL https://herdr.dev/install.sh | sh \
+    && mkdir -p /home/${USERNAME}/.config/herdr
+
+# The container is the sandbox, so Claude skips permission prompts in here.
+RUN echo "alias claude='claude --dangerously-skip-permissions'" >> /home/${USERNAME}/.bashrc
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["claude"]

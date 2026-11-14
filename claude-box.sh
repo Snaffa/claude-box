@@ -1,30 +1,25 @@
 #!/usr/bin/env bash
-# Build the image, or start Claude Code in the container.
-#   claude-box.sh build        build/rebuild the image (run from anywhere)
-#   claude-box.sh [args...]    start Claude in the project you're currently in;
-#                              run from inside ~/Projects/<project>. Extra
-#                              arguments go to claude, e.g.
-#                              claude-box.sh --dangerously-skip-permissions
+# One long-lived container ("claude-box") for every project under ~/Projects,
+# with Herdr running inside it: one Herdr workspace per project.
+#   claude-box.sh build   build/rebuild the image (run from anywhere)
+#   claude-box.sh         start the container if needed and open its Herdr
+#   claude-box.sh stop    stop the container (ends every session in it)
+# Claude runs with permissions bypassed in there: the container is the boundary
+# (no ssh, lab share read-only; see compose.yaml).
 set -euo pipefail
 
 export HOST_UID=$(id -u) HOST_GID=$(id -g)
-compose=(docker compose -f "$(dirname "$(realpath "$0")")/compose.yaml")
+dir=$(dirname "$(realpath "$0")")
+compose=(docker compose -p claude-box -f "$dir/compose.yaml" -f "$dir/compose.devcontainer.yaml")
 
-if [[ "${1:-}" == "build" ]]; then
-    exec "${compose[@]}" build
-fi
+case "${1:-}" in
+    build) exec "${compose[@]}" build ;;
+    stop)  exec docker stop claude-box ;;
+esac
 
-# The folder you launch from decides which project Claude opens in
-# and which conda environment is activated.
-workdir=$PWD
-if [[ "$workdir" != "$HOME/Projects/"* ]]; then
-    echo "claude-box: to launch, cd into a project under $HOME/Projects first" >&2
-    exit 1
+if [[ "$(docker inspect -f '{{.State.Running}}' claude-box 2>/dev/null)" != true ]]; then
+    "${compose[@]}" up -d
 fi
-
-# If the VS Code dev container is up, join it so everything shares one
-# container; otherwise start a throwaway one.
-if [[ "$(docker inspect -f '{{.State.Running}}' claude-box 2>/dev/null)" == true ]]; then
-    exec docker exec -it -w "$workdir" claude-box bash -ic 'exec claude "$@"' claude "$@"
-fi
-"${compose[@]}" run --rm -w "$workdir" claude claude "$@"
+# SHELL makes Herdr panes start bash, whose ~/.bashrc switches conda env on cd
+exec docker exec -it -e TERM -e COLORTERM -e SHELL=/bin/bash \
+    -w "$HOME/Projects" claude-box herdr
